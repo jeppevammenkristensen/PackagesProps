@@ -1,0 +1,36 @@
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Messaging;
+
+namespace PackagesProps.Infrastructure.LongRunning;
+
+public abstract class BaseProgressReportingTask(IMessenger messenger)
+{
+    public abstract Task ExecuteTask(CancellationToken? token);
+
+
+    /// <summary>
+    ///     Reports progress through messenger. The progress should be between 0 and 100 otherwise an
+    ///     exception will be thrown
+    /// </summary>
+    /// <param name="progress"></param>
+    /// <exception cref="ArgumentOutOfRangeException"></exception>
+    protected void ReportProgress(double progress)
+    {
+        if (progress is < 0 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(progress), "Progress must be between 0 and 100.");
+        }
+        messenger.Send(new ProgressDataMessage(progress));
+    }
+
+    /// <summary>
+    /// This reports status back to the MainWindowViewModel by
+    /// </summary>
+    /// <param name="message"></param>
+    protected void ReportStatus(string message)
+    {
+        messenger.Send(new StatusValueDataMessage(new StatusMessage(message, StatusType.Info)));
+    }
+}

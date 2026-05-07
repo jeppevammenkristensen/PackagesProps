@@ -1,0 +1,74 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackagesProps.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="560"
+        x:Class="PackagesProps.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        x:Name="Main"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="{Binding Title}" IsEnabled="{Binding Loaded}">
+
+    <Interaction.Behaviors>
+        <EventTrigger EventName="Loaded">
+            <InvokeCommandAction Command="{Binding StartupCommand}" />
+        </EventTrigger>
+    </Interaction.Behaviors>
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
+        <DockPanel Grid.Row="0">
+            <Menu>
+                <MenuItem Header="_File">
+                    <MenuItem Header="Open Primary" Command="{Binding LaunchPrimaryCommand}" />
+                    <MenuItem Header="Open Packages Updater" Command="{Binding LaunchPackagesUpdaterCommand}" />
+                    <MenuItem Header="Open Ensure Package.props" Command="{Binding LaunchEnsurePackagePropsCommand}" />
+                </MenuItem>
+            </Menu>
+        </DockPanel>
+
+        <StackPanel IsVisible="{Binding !Loaded}" Grid.Row="1"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+            <TextBlock Classes="Header" Text="Loading" HorizontalAlignment="Center" />
+            <TextBlock Classes="Subtitle" Text="Preparing your workspace..." HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <TabControl
+            Name="TabControl"
+            IsVisible="{Binding Loaded}"
+            Grid.Row="1"
+            VerticalAlignment="Stretch"
+            ItemsSource="{Binding Screens}"
+            SelectedItem="{Binding Screen}">
+            <TabControl.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Name="TabTitleTextBox" Text="{Binding Title}">
+                        <TextBlock.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem
+                                    Command="{Binding #Main.((vm:MainWindowViewModel)DataContext).CloseCommand}"
+                                    CommandParameter="{Binding}"
+                                    Header="Close" />
+                            </ContextMenu>
+                        </TextBlock.ContextMenu>
+                    </TextBlock>
+                </DataTemplate>
+            </TabControl.ItemTemplate>
+            <TabControl.ContentTemplate>
+                <DataTemplate>
+                    <Border Classes="Card">
+                        <ContentControl Content="{Binding}" />
+                    </Border>
+                </DataTemplate>
+            </TabControl.ContentTemplate>
+        </TabControl>
+
+        <Border Grid.Row="2" Classes.StatusBar="{Binding DisplayInfo}" Classes.StatusBarRed="{Binding DisplayInfoError}">
+            <TextBlock Text="{Binding Status}" />
+        </Border>
+
+        <ProgressBar Grid.Row="3" ShowProgressText="False"
+                     IsVisible="{Binding StartupCommand.IsRunning}" IsIndeterminate="False" Minimum="0" Maximum="100"
+                     Value="{Binding CurrentProgress}" />
+    </Grid>
+</Window>
