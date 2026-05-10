@@ -8,10 +8,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Configuration;
+using PackagesProps.Models.Messages;
 
 namespace PackagesProps.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase, IRecipient<ProgressDataMessage>, IRecipient<StatusValueDataMessage>
+public partial class MainWindowViewModel : ViewModelBase, IRecipient<ProgressDataMessage>, IRecipient<StatusValueDataMessage>, IRecipient<AddPageMessage<ScreenPage>>, IPageHost
 {
     private readonly IServiceLocator _locator;
 
@@ -116,12 +117,16 @@ public partial class MainWindowViewModel : ViewModelBase, IRecipient<ProgressDat
         if (e.PropertyName == nameof(Screen.CanClose)) CloseCommand.NotifyCanExecuteChanged();
     }
 
-    private async Task Launch(ScreenPage screenPage)
+    private async Task Launch(ScreenPage screenPage, bool setAsSelected = true)
     {
         Screens.Add(screenPage);
         await screenPage.OnActivatedAsync();
-        Screen = screenPage;
+        if (setAsSelected)
+        {
+            Screen = screenPage;
+        }
     }
+    
 
     private bool CanExecuteClose(ScreenPage? screen)
     {
@@ -139,5 +144,15 @@ public partial class MainWindowViewModel : ViewModelBase, IRecipient<ProgressDat
             Screen = Screens[^1];
         else
             Screen = null;
+    }
+
+    public void Receive(AddPageMessage<ScreenPage> message)
+    {
+        
+    }
+
+    public async Task AddPage(ScreenPage page, bool activate)
+    {
+        await Launch(page, activate);
     }
 }

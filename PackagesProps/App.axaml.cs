@@ -12,6 +12,7 @@ using PackagesProps.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PackagesProps.Models.Messages;
 
 namespace PackagesProps;
 
@@ -136,7 +137,10 @@ public class App : Application
             .AddViewModelAndRegisterView<MainWindowViewModel, MainWindow>(ViewModelScope.Singleton)
             .AddViewModelAndRegisterView<LandingPageControlViewModel, LandingPageControl>(ViewModelScope.Transient)
             .AddViewModelAndRegisterView<PackagesUpdaterViewModel, PackagesUpdaterView>(ViewModelScope.Transient)
-            .AddViewModelAndRegisterView<EnsurePackagePropsViewModel, EnsurePackagePropsView>(ViewModelScope.Transient);
+            .AddViewModelAndRegisterView<EnsurePackagePropsViewModel, EnsurePackagePropsView>(ViewModelScope.Transient)
+            .AddViewModelAndRegisterView<DirectoryPackagesPropsViewerViewModel, DirectoryPackagesPropsViewerView>(ViewModelScope.Transient);
+
+        collection.AddSingleton<IPageHost>(ctx => ctx.GetRequiredService<MainWindowViewModel>());
     }
 
 }

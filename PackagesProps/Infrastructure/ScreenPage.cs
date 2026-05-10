@@ -3,6 +3,7 @@ using PackagesProps.Infrastructure.LongRunning;
 using PackagesProps.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using PackagesProps.Models.Messages;
 
 namespace PackagesProps.Infrastructure;
 

@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging.Messages;
 
-namespace PackagesProps.Infrastructure.LongRunning;
+namespace PackagesProps.Models.Messages;
 
 public enum StatusType { Info, Error }
 

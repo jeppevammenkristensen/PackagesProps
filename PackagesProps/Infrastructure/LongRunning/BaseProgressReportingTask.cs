@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
+using PackagesProps.Models.Messages;
 
 namespace PackagesProps.Infrastructure.LongRunning;
 

@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModel="clr-namespace:PackagesProps.ViewModels"
+             x:DataType="viewModel:DirectoryPackagesPropsViewerViewModel"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="PackagesProps.Views.DirectoryPackagesPropsViewerView">
+    <DockPanel LastChildFill="True">
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
+            <TextBlock Classes="Header" Text="{Binding Title}" />
+            <TextBlock Classes="Subtitle" Text="{Binding FilePath}" />
+        </StackPanel>
+
+        <!-- XML content -->
+        <TextBox IsReadOnly="True"
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap"
+                 FontFamily="Cascadia Mono, Consolas, Menlo, Monaco, Courier New, monospace"
+                 VerticalAlignment="Stretch"
+                 HorizontalAlignment="Stretch"
+                 Text="{Binding Content}" />
+    </DockPanel>
+</UserControl>
