@@ -23,11 +23,12 @@ public class UpdateOperations
         }
     }
     
-    public async Task UpdateDirectory(AbsolutePath directoryProps, ImmutableArray<PackageUpdate> updates)
+    public async Task UpdateDirectoryPackagePropsFile(AbsolutePath directoryProps, ImmutableArray<PackageUpdate> updates)
     {
         XElement root = XElement.Load(directoryProps.Value);
         foreach (var packageUpdate in updates)
         {
+            
             AddOrUpdate(root, packageUpdate.PackageName, packageUpdate.Version);
         }
         
@@ -45,7 +46,7 @@ public class UpdateOperations
         }
         else
         {
-            XElement itemGroup = default; 
+            XElement itemGroup; 
             
             if (root.Element("ItemGroup") is {} item)
             {

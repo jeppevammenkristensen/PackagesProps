@@ -3,14 +3,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModel="clr-namespace:PackagesProps.ViewModels"
+             xmlns:models="clr-namespace:PackagesProps.Models"
              x:DataType="viewModel:PackagesUpdaterViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="PackagesProps.Views.PackagesUpdaterView">
     <DockPanel LastChildFill="True">
         <!-- Header & toolbar -->
         <StackPanel DockPanel.Dock="Top" Spacing="14" Margin="0,0,0,14">
-            <!-- Title -->
-            <TextBlock Classes="Header" Text="{Binding Title}" />
+           
             <TextBlock Classes="Subtitle" Text="Pick a folder to begin." />
 
             <!-- Toolbar -->
@@ -19,7 +19,11 @@
                 <TextBlock VerticalAlignment="Center" Text="{Binding SelectedFolder}" />
                 <Button Content="Refresh" Command="{Binding ExecuteRefreshCommand}" />
                 <CheckBox IsChecked="{Binding Preview}" Content="Include preview"></CheckBox>
-                <Button Content="Apply" Command="{Binding ApplyCommand}" />
+                <Button Content="Apply changes" Command="{Binding ApplyCommand}" ToolTip.Tip="Apply the changes" />
+                
+                <CheckBox IsChecked="{Binding HasDirectoryPackagesProps}" IsEnabled="False" Content="Has directory props"></CheckBox>
+                <Button IsVisible="{Binding TraverseUpVisible}"  Command="{Binding TraverseUpCommand}"  Content="Traverse Up"></Button>
+                
                 <ProgressBar Width="80" IsIndeterminate="True"
                              VerticalAlignment="Center"
                              ShowProgressText="False"
@@ -32,27 +36,43 @@
         </StackPanel>
 
         <!-- Packages -->
-        <Grid RowDefinitions="Auto,*" ColumnDefinitions="2*,*,*,*,*,*" IsEnabled="{Binding !ExecuteRefreshCommand.IsRunning}">
+        <Grid RowDefinitions="Auto,*,Auto,*" ColumnDefinitions="2*,*,*,*,*,*" IsEnabled="{Binding !ExecuteRefreshCommand.IsRunning}">
             <!-- Column headers -->
-            <TextBlock Grid.Row="0" Grid.Column="0" FontWeight="Bold" Text="Package" Margin="8,4" />
-            <TextBlock Grid.Row="0" Grid.Column="1">Package Props Version</TextBlock>
-            <TextBlock Grid.Row="0" Grid.Column="2" FontWeight="Bold" Text="Installed" Margin="8,4" />
-            <TextBlock Grid.Row="0" Grid.Column="3" FontWeight="Bold" Text="Available" Margin="8,4" />
-            <TextBlock Grid.Row="0" Grid.Column="4" FontWeight="Bold" Text="Used" Margin="8,4" />
+            <TextBlock Classes="ListBoxHeader" Grid.Row="0" Grid.Column="0"  Text="Package" ToolTip.Tip="The Package name"  />
+            <TextBlock Classes="ListBoxHeader" Grid.Row="0" Grid.Column="1"   ToolTip.Tip="Version in the package props (if available)" >Package Props Version</TextBlock>
+            <TextBlock Classes="ListBoxHeader" Grid.Row="0" Grid.Column="2"  Text="Highest Version from projects"  />
+            <TextBlock Classes="ListBoxHeader" Grid.Row="0" Grid.Column="3"  Text="Available" />
+            <TextBlock Classes="ListBoxHeader" Grid.Row="0" Grid.Column="4"  Text="Used"  />
             <Border Grid.Row="0" Grid.ColumnSpan="6" Grid.Column="0" BorderBrush="Gray" BorderThickness="0,0,0,1" />
 
             <!-- Package list -->
-            <ListBox Grid.Row="1" Grid.ColumnSpan="6" Grid.Column="0"
+            <ListBox Name="PackagesList"
+                     SelectionMode="Multiple"
+                     Grid.Row="1" Grid.ColumnSpan="6" Grid.Column="0"
                      ItemsSource="{Binding PackageAggregateViewModels}">
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Use installed (available from projects)"
+                                  Command="{Binding UseHighestForSelectedCommand}"
+                                  CommandParameter="{Binding #PackagesList.SelectedItems}" />
+                        <MenuItem Header="Use selected"
+                                  Command="{Binding UseSelectedForSelectedCommand}"
+                                  CommandParameter="{Binding #PackagesList.SelectedItems}" />
+                    </ContextMenu>
+                </ListBox.ContextMenu>
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="viewModel:PackageAggregateViewModel">
                         <Grid ColumnDefinitions="2*,*,*,*,*,*">
                             <TextBlock Grid.Column="0" Margin="8,4" Text="{Binding Package}" />
                             <TextBlock Grid.Column="1" Margin="8,4" Text="{Binding PackagePropsVersion}"></TextBlock>
-                            <TextBlock Grid.Column="2" Margin="8,4" Text="{Binding HighestInstalledVersion}" />
+                            <TextBlock Grid.Column="2" Margin="8,4" Text="{Binding HighestProjectsVersion}" />
                             <ComboBox Grid.Column="3" Margin="8,4" SelectedItem="{Binding HighestAvailableVersion}" ItemsSource="{Binding LatestVersions}" />
                             <TextBlock Grid.Column="4" Margin="8,4" Text="{Binding UsedVersion}" ></TextBlock>
-                            <Button Grid.Column="5" Margin="8,4" Content="Refresh" Command="{Binding UseSelectedCommand}"  />
+                            <StackPanel Grid.Column="5" Margin="8,4" Orientation="Horizontal">
+                                <Button Content="Use installed" Command="{Binding UseHighestCommand}"  />
+                                <Button Content="Use selected" Command="{Binding UseSelectedCommand}"  />
+                            </StackPanel>
+                            
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -63,6 +83,26 @@
                     </Style>
                 </ListBox.Styles>
             </ListBox>
+
+            <!-- Projects header -->
+            <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="6"
+                       FontWeight="Bold" Text="Projects" Margin="8,12,8,4" />
+
+            <!-- Project tree -->
+            <TreeView Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="6"
+                      ItemsSource="{Binding Projects}">
+                <TreeView.DataTemplates>
+                    <TreeDataTemplate DataType="models:ProjectWrapper" ItemsSource="{Binding PackageReferences}">
+                        <TextBlock Text="{Binding Path.FileName}" FontWeight="SemiBold" />
+                    </TreeDataTemplate>
+                    <DataTemplate DataType="models:PackageReference">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding Name}" />
+                            <TextBlock Text="{Binding Version}" Opacity="0.7" />
+                        </StackPanel>
+                    </DataTemplate>
+                </TreeView.DataTemplates>
+            </TreeView>
         </Grid>
     </DockPanel>
 </UserControl>

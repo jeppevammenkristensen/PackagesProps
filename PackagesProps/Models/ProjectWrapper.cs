@@ -27,6 +27,11 @@ public class ProjectWrapper
         _path = path;
     }
 
+
+    public AbsolutePath Path => _path;
+
+    public IEnumerable<PackageReference> PackageReferences => GetAllPackageReferences();
+
     public async Task Load()
     {
         try

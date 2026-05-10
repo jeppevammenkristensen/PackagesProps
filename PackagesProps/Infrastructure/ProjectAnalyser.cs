@@ -48,13 +48,13 @@ public class ProjectAnalyser(IFileSystem fileSystem)
             }
             
             var highestInstalledVersion = v
-                .Where(v => v.HasVersion)
+                .Where(x => x.HasVersion)
                 .Select(x => NuGetVersion.Parse(x.Version!)).Max();
             yield return new PackageAggregateViewModel
             {
                 Package = v.Key,
                 PackagePropsVersion = PackagePropsVersion,
-                HighestInstalledVersion = highestInstalledVersion?.ToNormalizedString(),
+                HighestProjectsVersion = highestInstalledVersion?.ToNormalizedString(),
                 UsedVersion = highestInstalledVersion?.ToNormalizedString()
             };
         }

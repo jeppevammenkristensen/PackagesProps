@@ -9,6 +9,7 @@ using PackagesProps.Infrastructure;
 using PackagesProps.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileBasedApp.Toolkit;
 using Microsoft.Extensions.Logging;
 using NuGet.Packaging;
 using PackagesProps.Models.Messages;
@@ -21,16 +22,22 @@ public partial class PackagesUpdaterViewModel(
     ILogger<PackagesUpdaterViewModel> logger,
     IServiceLocator locator,
     IPageHost pageHost,
+    IDialogService dialogService,
+    PackagePropsService packagePropsService,
     IFileSystem fileSystem) : ScreenPage
 {
     public override string Title => "Packages updater";
 
-    [ObservableProperty] public partial AbsolutePath? SelectedFolder { get; set; }
+    [NotifyPropertyChangedFor(nameof(TraverseUpVisible))] [NotifyCanExecuteChangedFor(nameof(TraverseUpCommand))] [ObservableProperty] public partial AbsolutePath? SelectedFolder { get; set; }
     [ObservableProperty] public partial ObservableCollection<PackageAggregateViewModel> PackageAggregateViewModels { get; set; }
     [ObservableProperty] public partial bool Preview { get; set; }
     [ObservableProperty] public partial List<ProjectWrapper> Projects { get; set; }
-    [ObservableProperty] public partial bool HasDirectoryPackagesProps { get; set; }
-    [ObservableProperty] public partial DirectoryPackagesPropsWrapper DirectoryPackagesPropsWrapper { get; set; }
+    [NotifyPropertyChangedFor(nameof(TraverseUpVisible))] [NotifyCanExecuteChangedFor(nameof(TraverseUpCommand))] [ObservableProperty] public partial bool HasDirectoryPackagesProps { get; set; }
+    [ObservableProperty] public partial DirectoryPackagesPropsWrapper? DirectoryPackagesPropsWrapper { get; set; }
+
+    public bool TraverseUpVisible => !HasDirectoryPackagesProps && SelectedFolder is not null; 
+    
+    
 
     private bool CanExecuteApply()
     {
@@ -40,15 +47,65 @@ public partial class PackagesUpdaterViewModel(
     [RelayCommand(CanExecute = nameof(CanExecuteApply))]
     protected async Task Apply()
     {
-        SetStatusMessage($"Starting update of {SelectedFolder!.Value / "Directory.Packages.props"}...");
+        if (SelectedFolder is not { } folder) return;
+
+        var directoryPropsPath = folder / "Directory.Packages.props";
+
+        if (!HasDirectoryPackagesProps)
+        {
+            var confirmed = await dialogService.ConfirmAsync(
+                title: "Create Directory.Packages.props?",
+                message:
+                $"No Directory.Packages.props was found in {folder}. Create one before applying the updates?",
+                confirmText: "Create",
+                cancelText: "Cancel");
+
+            if (!confirmed)
+            {
+                SetStatusMessage("Apply cancelled: Directory.Packages.props is missing.");
+                return;
+            }
+
+            SetStatusMessage($"Creating {directoryPropsPath}...");
+            await packagePropsService.CreateProps(folder);
+            DirectoryPackagesPropsWrapper = new DirectoryPackagesPropsWrapper(directoryPropsPath);
+            await DirectoryPackagesPropsWrapper.Load();
+            HasDirectoryPackagesProps = true;
+        }
+
+        SetStatusMessage($"Starting update of {directoryPropsPath}...");
         var updateOperations = new UpdateOperations();
-        await updateOperations.UpdateDirectory(SelectedFolder!.Value / "Directory.Packages.props", [..PackageAggregateViewModels.Select(x => new PackageUpdate(x.Package, x.UsedVersion!))]);
-        await updateOperations.UpdateVersion([..Projects], [..PackageAggregateViewModels.Select(x => x.Package)]);
+
+        var packagesToUpdate = PackageAggregateViewModels.Where(x => !x.IgnoreUpdate).ToList();
+
+        await updateOperations.UpdateDirectoryPackagePropsFile(directoryPropsPath, [..packagesToUpdate.Select(x => new PackageUpdate(x.Package, x.UsedVersion!))]);
+        await updateOperations.UpdateVersion([..Projects], [..packagesToUpdate.Select(x => x.Package)]);
         //await ExecuteRefreshCommand.ExecuteAsync(null);
 
         var directoryPackagesPropsWrapper = locator.GetRequiredService<DirectoryPackagesPropsViewerViewModel>();
-        directoryPackagesPropsWrapper.FilePath = SelectedFolder!.Value / "Directory.Packages.props";
+        directoryPackagesPropsWrapper.FilePath = directoryPropsPath;
         await pageHost.AddPage(directoryPackagesPropsWrapper, false);
+    }
+
+
+    [RelayCommand]
+    private void UseHighestForSelected(System.Collections.IList? items)
+    {
+        if (items is null) return;
+        foreach (var vm in items.OfType<PackageAggregateViewModel>())
+        {
+            vm.UseHighest();
+        }
+    }
+
+    [RelayCommand]
+    private void UseSelectedForSelected(System.Collections.IList? items)
+    {
+        if (items is null) return;
+        foreach (var vm in items.OfType<PackageAggregateViewModel>())
+        {
+            vm.UseSelected();
+        }
     }
     
 
@@ -86,6 +143,15 @@ public partial class PackagesUpdaterViewModel(
         SetStatusMessage("Completed");
     }
 
+    protected async Task CreateProps()
+    {
+        if (!HasDirectoryPackagesProps && SelectedFolder is not null)
+        {
+            await packagePropsService.CreateProps(SelectedFolder.Value);
+        }
+    }
+    
+
     private bool CanExecuteLoadNugetData()
     {
         return true;
@@ -116,5 +182,28 @@ public partial class PackagesUpdaterViewModel(
                 logger.LogWarning(ex, "Failed to refresh package {Package}", vm.Package);
             }
         });
+    }
+
+
+    private bool CanExecuteTraverseUp()
+    {
+        return TraverseUpVisible;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteTraverseUp))]
+    protected async Task TraverseUp(CancellationToken token = default)
+    {
+        var findParentOrNull = this.SelectedFolder!.Value.FindParentOrNull(x => (x / "Directory.Packages.props").FileExists(fileSystem));
+        if (findParentOrNull is { Value: {}})
+        {
+            SetStatusMessage($"Found Directory.Packages.props in {findParentOrNull.Value.Value}. Loading...");
+            await OnFolderSelectedAsync(findParentOrNull.Value);
+        }
+        findParentOrNull = SelectedFolder!.Value.FindParentOrNull(x => x.GetFiles("*.sln*").Any());
+        if (findParentOrNull is { Value: {}})
+        {
+            SetStatusMessage($"Found solution file in {findParentOrNull.Value.Value}. Setting this as folder");
+            await OnFolderSelectedAsync(findParentOrNull.Value);
+        }
     }
 }

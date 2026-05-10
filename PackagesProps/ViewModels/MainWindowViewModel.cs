@@ -65,21 +65,9 @@ public partial class MainWindowViewModel : ViewModelBase, IRecipient<ProgressDat
         var longRunningTask = new DummyTask(Messenger);
         await longRunningTask.ExecuteTask(token);
         Loaded = true;
-        await LaunchPrimaryCommand.ExecuteAsync(null);
+        await LaunchPackagesUpdaterCommand.ExecuteAsync(null);
     }
 
-
-    private bool CanExecuteLaunchPrimary()
-    {
-        return true;
-    }
-
-    [RelayCommand(CanExecute = nameof(CanExecuteLaunchPrimary))]
-    private async Task LaunchPrimary()
-    {
-        var screen = _locator.GetRequiredService<LandingPageControlViewModel>();
-        await Launch(screen);
-    }
 
     private bool CanExecuteLaunchPackagesUpdater()
     {

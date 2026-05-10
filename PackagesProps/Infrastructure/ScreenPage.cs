@@ -66,3 +66,21 @@ public abstract partial class ScreenPage : ViewModelBase
         Messenger.Send(valueMesage);
     }
 }
+
+public static class ModelsExtensions
+{
+    extension(IMessenger messenger)
+    {
+        public void SetErrorMessage(string message)
+        {
+            var valueMesage = new StatusValueDataMessage(new StatusMessage(message, StatusType.Error));
+            messenger.Send(valueMesage);
+        }
+        
+        public void SetStatusMessage(string message)
+        {
+            var valueMesage = new StatusValueDataMessage(new StatusMessage(message, StatusType.Info));
+            messenger.Send(valueMesage);
+        }
+    }
+}

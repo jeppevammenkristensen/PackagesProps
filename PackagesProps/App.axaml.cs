@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
+using CommunityToolkit.Mvvm.Messaging;
 using PackagesProps.Infrastructure;
 using PackagesProps.Infrastructure.LongRunning;
 using PackagesProps.ViewModels;
@@ -120,6 +121,9 @@ public class App : Application
         // Register other dependencies here. TimeProvider added as an example
         services.AddSingleton<TimeProvider>(_ => TimeProvider.System);
         services.AddTransient<IFileSystem>(_ => new FileSystem());
+        services.AddTransient<IMessenger>(_ => WeakReferenceMessenger.Default);
+        services.AddTransient<PackagePropsService>();
+        services.AddSingleton<IDialogService, DialogService>();
     }
 
     /// <summary>
@@ -135,7 +139,6 @@ public class App : Application
         
         collection
             .AddViewModelAndRegisterView<MainWindowViewModel, MainWindow>(ViewModelScope.Singleton)
-            .AddViewModelAndRegisterView<LandingPageControlViewModel, LandingPageControl>(ViewModelScope.Transient)
             .AddViewModelAndRegisterView<PackagesUpdaterViewModel, PackagesUpdaterView>(ViewModelScope.Transient)
             .AddViewModelAndRegisterView<EnsurePackagePropsViewModel, EnsurePackagePropsView>(ViewModelScope.Transient)
             .AddViewModelAndRegisterView<DirectoryPackagesPropsViewerViewModel, DirectoryPackagesPropsViewerView>(ViewModelScope.Transient);
