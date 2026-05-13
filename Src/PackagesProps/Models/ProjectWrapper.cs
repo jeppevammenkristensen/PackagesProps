@@ -17,39 +17,52 @@ namespace PackagesProps.Models;
 /// <c>PackageReference</c> entries and stripping their <c>Version</c> attributes (for migration
 /// to central package management).
 /// </summary>
-public class ProjectWrapper
+public class ProjectWrapper(AbsolutePath path, IFileSystem fileSystem)
 {
-    private readonly AbsolutePath _path;
-    private XElement _xml;
+    private XElement? _xml;
 
-    public ProjectWrapper(AbsolutePath path)
+
+    public ProjectWrapper(AbsolutePath path) : this(path, new FileSystem())
     {
-        _path = path;
     }
 
 
-    public AbsolutePath Path => _path;
+    public AbsolutePath Path => path;
 
     public IEnumerable<PackageReference> PackageReferences => GetAllPackageReferences();
 
+    protected XElement Xml
+    {
+
+        get
+        {
+
+            if (_xml == null)
+            {
+                throw new InvalidOperationException(
+                    "Xml has not been loaded. Remember to call the Load method before accessing data");
+            }
+
+            return _xml;
+        }
+    }
+    
     public async Task Load()
     {
         try
         {
-            await using (var fileSystemStream = _path.OpenRead())
-            {
-                _xml= await XElement.LoadAsync(fileSystemStream, LoadOptions.PreserveWhitespace, CancellationToken.None);
-            }
+            await using var fileSystemStream = path.OpenRead(fileSystem);
+            _xml= await XElement.LoadAsync(fileSystemStream, LoadOptions.PreserveWhitespace, CancellationToken.None);
         }
         catch (Exception e)
         {
-            throw new Exception($"Failed to load project {_path}", e);
+            throw new Exception($"Failed to load project {path}", e);
         }
     }
     
     public IEnumerable<PackageReference> GetAllPackageReferences()
     {
-        foreach (var packageReference in _xml.Descendants("PackageReference"))
+        foreach (var packageReference in Xml.Descendants("PackageReference"))
         {
             yield return new PackageReference(packageReference);
         }
@@ -61,7 +74,7 @@ public class ProjectWrapper
         
         foreach (var packageName in packageNames)
         {
-            if (_xml.Descendants("PackageReference")
+            if (Xml.Descendants("PackageReference")
                     .FirstOrDefault(x => (string?)x.Attribute("Include") == packageName) is { } match)
             {
                 match.Attribute("Version")?.Remove();
@@ -84,8 +97,8 @@ public class ProjectWrapper
             NewLineChars = "\n",       // optional, match the dotnet SDK style
         };
 
-        await using var stream = _path.FileCreate();
+        await using var stream = path.FileCreate();
         await using var writer = XmlWriter.Create(stream, settings);
-        await _xml.SaveAsync(writer, CancellationToken.None);
+        await Xml.SaveAsync(writer, CancellationToken.None);
     }
 }

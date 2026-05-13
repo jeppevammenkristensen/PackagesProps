@@ -24,5 +24,14 @@
   <ItemGroup>
     <ProjectReference Include="..\PackagesProps\PackagesProps.csproj" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <!-- TestSources holds fixture files (e.g. sample csproj / Directory.Packages.props) used by tests.
+         Exclude them from compilation and ship them next to the test binary so tests can read them at runtime. -->
+    <Compile Remove="TestSources\**" />
+    <EmbeddedResource Remove="TestSources\**" />
+    <None Remove="TestSources\**" />
+    <Content Include="TestSources\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

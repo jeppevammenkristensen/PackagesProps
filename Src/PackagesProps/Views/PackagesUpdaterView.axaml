@@ -19,15 +19,23 @@
                 <TextBlock VerticalAlignment="Center" Text="{Binding SelectedFolder}" />
                 <Button Content="Refresh" Command="{Binding ExecuteRefreshCommand}" />
                 <CheckBox IsChecked="{Binding Preview}" Content="Include preview"></CheckBox>
-                <Button Content="Apply changes" Command="{Binding ApplyCommand}" ToolTip.Tip="Apply the changes" />
+                <Button Content="Apply changes" Command="{Binding ApplyCommand}" ToolTip.Tip="Apply the to a directory.packages.props file in the given folder. If one does not exist it will be created (if a prompt is confirmed)" />
                 
                 <CheckBox IsChecked="{Binding HasDirectoryPackagesProps}" IsEnabled="False" Content="Has directory props"></CheckBox>
-                <Button IsVisible="{Binding TraverseUpVisible}"  Command="{Binding TraverseUpCommand}"  Content="Traverse Up"></Button>
+                <Button IsVisible="{Binding TraverseUpVisible}" Command="{Binding TraverseUpCommand}"  ToolTip.Tip="Traverses up from the given location to find a folder containing directory.packages.props and if that is not found an solution file" Content="Traverse Up"></Button>
                 
-                <ProgressBar Width="80" IsIndeterminate="True"
+                <ProgressBar Width="100" Height="40" IsIndeterminate="False"
                              VerticalAlignment="Center"
-                             ShowProgressText="False"
-                             IsVisible="{Binding ExecuteRefreshCommand.IsRunning}" />
+                             Minimum="0" Maximum="{Binding RefreshTotal}" Value="{Binding RefreshProgress}"
+                             ShowProgressText="True" 
+                             ProgressTextFormat="{}{0:0}/{3:0}"
+                             IsVisible="{Binding LoadingNugetPackages}" >
+                    <ProgressBar.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Value" Duration="0:0:0.25" Easing="CubicEaseOut" />
+                        </Transitions>
+                    </ProgressBar.Transitions>
+                </ProgressBar>
                 <ProgressBar Width="80" IsIndeterminate="True"
                              VerticalAlignment="Center"
                              ShowProgressText="False"
@@ -36,7 +44,7 @@
         </StackPanel>
 
         <!-- Packages -->
-        <Grid RowDefinitions="Auto,*,Auto,*" ColumnDefinitions="2*,*,*,*,*,*" IsEnabled="{Binding !ExecuteRefreshCommand.IsRunning}">
+        <Grid RowDefinitions="Auto,2*,Auto,Auto,*" ColumnDefinitions="2*,*,*,*,*,*" IsEnabled="{Binding !ExecuteRefreshCommand.IsRunning}">
             <!-- Column headers -->
             <TextBlock Classes="ListBoxHeader" Grid.Row="0" Grid.Column="0"  Text="Package" ToolTip.Tip="The Package name"  />
             <TextBlock Classes="ListBoxHeader" Grid.Row="0" Grid.Column="1"   ToolTip.Tip="Version in the package props (if available)" >Package Props Version</TextBlock>
@@ -89,7 +97,7 @@
                        FontWeight="Bold" Text="Projects" Margin="8,12,8,4" />
 
             <!-- Project tree -->
-            <TreeView Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="6"
+            <TreeView Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="6"
                       ItemsSource="{Binding Projects}">
                 <TreeView.DataTemplates>
                     <TreeDataTemplate DataType="models:ProjectWrapper" ItemsSource="{Binding PackageReferences}">

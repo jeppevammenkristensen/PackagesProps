@@ -16,7 +16,6 @@ namespace PackagesProps.Tests.ViewModels;
 [TestSubject(typeof(PackageAggregateViewModel))]
 public class PackageAggregateViewModelTest
 {
-    
 
     [Fact]
     public async Task Refresh_Sets_Correct_Versions()

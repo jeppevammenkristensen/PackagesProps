@@ -2,18 +2,13 @@
 using System.IO.Abstractions;
 using System.Linq;
 using FileBasedApp.Toolkit;
+using FileBasedApp.Toolkit.CSharp;
 using NuGet.Versioning;
 using PackagesProps.Models;
 using PackagesProps.ViewModels;
 using TruePath;
 
 namespace PackagesProps.Infrastructure;
-
-public interface IProjectAnalyser
-{
-    IAsyncEnumerable<ProjectWrapper> AnalyzePathForProjectWrappers(AbsolutePath path);
-    IAsyncEnumerable<PackageAggregateViewModel> GetPackageReferences(IEnumerable<ProjectWrapper> projects, DirectoryPackagesPropsWrapper? packagesPropsWrapper);
-}
 
 public class ProjectAnalyser(
     IFileSystem fileSystem, 
@@ -25,14 +20,15 @@ public class ProjectAnalyser(
     {
         path.ThrowIfNotDirectory();
         
-        foreach (var enumerateAllFile in path.EnumerateAllFiles("*.csproj", fileSystem).Select(x => new ProjectWrapper(x)))
+        foreach (var enumerateAllFile in path.EnumerateAllFiles("*.csproj", fileSystem)
+                     .Select(x => new ProjectWrapper(x)))
         {
             await enumerateAllFile.Load();
             yield return enumerateAllFile;
         }
     }
     
-    public async IAsyncEnumerable<PackageAggregateViewModel> GetPackageReferences(IEnumerable<ProjectWrapper> projects, DirectoryPackagesPropsWrapper? packagesPropsWrapper)
+    public async IAsyncEnumerable<PackageAggregate> GetPackageReferences(IEnumerable<ProjectWrapper> projects, DirectoryPackagesPropsWrapper? packagesPropsWrapper)
     {
         List<PackageReference> packageReferences = new();
         Dictionary<string, PackageVersionItem> packagesProps = packagesPropsWrapper?.GetPackageVersions()
@@ -55,16 +51,15 @@ public class ProjectAnalyser(
             
             var highestInstalledVersion = v
                 .Where(x => x.HasVersion)
-                .Select(x => NuGetVersion.Parse(x.Version!)).Max();
-
-
-            var packageAggregateViewModel = locator.GetRequiredService<PackageAggregateViewModel>();
-            packageAggregateViewModel.Package = v.Key;
-            packageAggregateViewModel.PackagePropsVersion = PackagePropsVersion;
-            packageAggregateViewModel.HighestProjectsVersion = highestInstalledVersion?.ToNormalizedString();
-            packageAggregateViewModel.UsedVersion = highestInstalledVersion?.ToNormalizedString();
-
-            yield return packageAggregateViewModel;
+                .Select(x => new PackageVersion(x.Version!))
+                .Where(x => x.Type == PackageVersionType.SemVer)
+                .Max();
+            
+            yield return new PackageAggregate(
+                v.Key,
+                highestInstalledVersion?.ToString(),
+                PackagePropsVersion);
+            
         }
     }
 }

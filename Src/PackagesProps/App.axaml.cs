@@ -148,6 +148,7 @@ public class App : Application
             .AddViewModelAndRegisterView<DirectoryPackagesPropsViewerViewModel, DirectoryPackagesPropsViewerView>(ViewModelScope.Transient);
 
         collection.AddSingleton<IPageHost>(ctx => ctx.GetRequiredService<MainWindowViewModel>());
+        collection.AddTransient<PackageAggregateViewModel>();
     }
 
 }

@@ -11,10 +11,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileBasedApp.Toolkit;
 using Microsoft.Extensions.Logging;
-using NuGet.Packaging;
-using PackagesProps.Models.Messages;
 using TruePath;
-using IMessengerExtensions = CommunityToolkit.Mvvm.Messaging.IMessengerExtensions;
 
 namespace PackagesProps.ViewModels;
 
@@ -25,6 +22,7 @@ public partial class PackagesUpdaterViewModel(
     IDialogService dialogService,
     PackagePropsService packagePropsService,
     IProjectAnalyser projectAnalyser,
+    IUiDispatcher dispatcher,
     IFileSystem fileSystem) : ScreenPage
 {
     public override string Title => "Packages updater";
@@ -35,10 +33,14 @@ public partial class PackagesUpdaterViewModel(
     [ObservableProperty] public partial List<ProjectWrapper> Projects { get; set; }
     [NotifyPropertyChangedFor(nameof(TraverseUpVisible))] [NotifyCanExecuteChangedFor(nameof(TraverseUpCommand))] [ObservableProperty] public partial bool HasDirectoryPackagesProps { get; set; }
     [ObservableProperty] public partial DirectoryPackagesPropsWrapper? DirectoryPackagesPropsWrapper { get; set; }
+    
+    
+    public bool TraverseUpVisible => !HasDirectoryPackagesProps && SelectedFolder is not null;
+    
+    [ObservableProperty] public partial bool LoadingNugetPackages { get; set; }
+    [ObservableProperty] public partial int RefreshProgress { get; set; }
+    [ObservableProperty] public partial int RefreshTotal { get; set; }
 
-    public bool TraverseUpVisible => !HasDirectoryPackagesProps && SelectedFolder is not null; 
-    
-    
 
     private bool CanExecuteApply()
     {
@@ -138,7 +140,17 @@ public partial class PackagesUpdaterViewModel(
         SetStatusMessage("Analysing projects...");
         Projects = await projectAnalyser.AnalyzePathForProjectWrappers(SelectedFolder!.Value).ToListAsync(token);
         SetStatusMessage("Checking package references...");
-        PackageAggregateViewModels = [..await projectAnalyser.GetPackageReferences(Projects, DirectoryPackagesPropsWrapper).ToListAsync(token)];
+        PackageAggregateViewModels = [..await projectAnalyser.GetPackageReferences(Projects, DirectoryPackagesPropsWrapper)
+            .Select(x =>
+            {
+                var viewModel = locator.GetRequiredService<PackageAggregateViewModel>();
+                viewModel.Package = x.Package;
+                viewModel.PackagePropsVersion = x.PackagePropsVersion;
+                viewModel.HighestProjectsVersion = x.HighestProjectsVersion;
+                viewModel.UsedVersion = x.UsedVersion;
+                return viewModel;
+            })
+            .ToListAsync(token)];
         await LoadNugetData(token); 
         SetStatusMessage("Completed");
     }
@@ -158,8 +170,11 @@ public partial class PackagesUpdaterViewModel(
     }
 
     [RelayCommand(CanExecute = nameof(CanExecuteLoadNugetData))]
-    public async Task LoadNugetData(CancellationToken token = default)
+    private async Task LoadNugetData(CancellationToken token = default)
     {
+        LoadingNugetPackages = true;
+        RefreshProgress = 0;
+        
         if (SelectedFolder is not { } root || PackageAggregateViewModels is null)
             return;
 
@@ -171,7 +186,11 @@ public partial class PackagesUpdaterViewModel(
             CancellationToken = token,
         };
 
+        var count = 0; 
+        RefreshTotal = PackageAggregateViewModels.Count;
+
         await Parallel.ForEachAsync(PackageAggregateViewModels, options, async (vm, ct) =>
+            //foreach (var vm in PackageAggregateViewModels)
         {
             try
             {
@@ -181,7 +200,19 @@ public partial class PackagesUpdaterViewModel(
             {
                 logger.LogWarning(ex, "Failed to refresh package {Package}", vm.Package);
             }
+            finally
+            {
+                var done = Interlocked.Increment(ref count);
+                await dispatcher.InvokeAsync(() =>
+                {
+                    RefreshProgress = done;
+                });
+
+            }
         });
+        //);
+
+        LoadingNugetPackages = false;
     }
 
 
