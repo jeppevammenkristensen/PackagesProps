@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using Avalonia.Markup.Xaml;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.Build.Evaluation;
 using PackagesProps.Infrastructure;
 using PackagesProps.Infrastructure.LongRunning;
 using PackagesProps.ViewModels;
@@ -124,6 +125,9 @@ public class App : Application
         services.AddTransient<IMessenger>(_ => WeakReferenceMessenger.Default);
         services.AddTransient<PackagePropsService>();
         services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<INugetRepository, NugetRepository>();
+        services.AddSingleton<IProjectAnalyser, ProjectAnalyser>();
+        services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
     }
 
     /// <summary>

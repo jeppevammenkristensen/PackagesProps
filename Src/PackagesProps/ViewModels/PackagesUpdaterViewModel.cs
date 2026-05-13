@@ -24,6 +24,7 @@ public partial class PackagesUpdaterViewModel(
     IPageHost pageHost,
     IDialogService dialogService,
     PackagePropsService packagePropsService,
+    IProjectAnalyser projectAnalyser,
     IFileSystem fileSystem) : ScreenPage
 {
     public override string Title => "Packages updater";
@@ -134,7 +135,6 @@ public partial class PackagesUpdaterViewModel(
     [RelayCommand(CanExecute = nameof(CanExecuteExecuteRefresh))]
     public async Task ExecuteRefresh(CancellationToken token = default)
     {
-        var projectAnalyser = new ProjectAnalyser(fileSystem);
         SetStatusMessage("Analysing projects...");
         Projects = await projectAnalyser.AnalyzePathForProjectWrappers(SelectedFolder!.Value).ToListAsync(token);
         SetStatusMessage("Checking package references...");

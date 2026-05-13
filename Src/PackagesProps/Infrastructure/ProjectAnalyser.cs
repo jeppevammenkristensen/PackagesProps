@@ -9,19 +9,26 @@ using TruePath;
 
 namespace PackagesProps.Infrastructure;
 
-public class ProjectAnalyser(IFileSystem fileSystem)
+public interface IProjectAnalyser
 {
-    public string PackagePropsVersion { get; set; }
+    IAsyncEnumerable<ProjectWrapper> AnalyzePathForProjectWrappers(AbsolutePath path);
+    IAsyncEnumerable<PackageAggregateViewModel> GetPackageReferences(IEnumerable<ProjectWrapper> projects, DirectoryPackagesPropsWrapper? packagesPropsWrapper);
+}
+
+public class ProjectAnalyser(
+    IFileSystem fileSystem, 
+    IServiceLocator locator) : IProjectAnalyser
+{
+    private string PackagePropsVersion { get; set; }
 
     public async IAsyncEnumerable<ProjectWrapper> AnalyzePathForProjectWrappers(AbsolutePath path)
     {
         path.ThrowIfNotDirectory();
         
-        foreach (var enumerateAllFile in path.EnumerateAllFiles("*.csproj").Select(x => new ProjectWrapper(x)))
+        foreach (var enumerateAllFile in path.EnumerateAllFiles("*.csproj", fileSystem).Select(x => new ProjectWrapper(x)))
         {
             await enumerateAllFile.Load();
             yield return enumerateAllFile;
-            //packageReferences.AddRange(enumerateAllFile.GetAllPackageReferences());
         }
     }
     
@@ -38,7 +45,6 @@ public class ProjectAnalyser(IFileSystem fileSystem)
         }
 
         var groupBy = packageReferences
-            //.Where(x => x.HasInclude && x.HasVersion)
             .GroupBy(x => x.Name);
         foreach (var v in groupBy)
         {
@@ -50,13 +56,15 @@ public class ProjectAnalyser(IFileSystem fileSystem)
             var highestInstalledVersion = v
                 .Where(x => x.HasVersion)
                 .Select(x => NuGetVersion.Parse(x.Version!)).Max();
-            yield return new PackageAggregateViewModel
-            {
-                Package = v.Key,
-                PackagePropsVersion = PackagePropsVersion,
-                HighestProjectsVersion = highestInstalledVersion?.ToNormalizedString(),
-                UsedVersion = highestInstalledVersion?.ToNormalizedString()
-            };
+
+
+            var packageAggregateViewModel = locator.GetRequiredService<PackageAggregateViewModel>();
+            packageAggregateViewModel.Package = v.Key;
+            packageAggregateViewModel.PackagePropsVersion = PackagePropsVersion;
+            packageAggregateViewModel.HighestProjectsVersion = highestInstalledVersion?.ToNormalizedString();
+            packageAggregateViewModel.UsedVersion = highestInstalledVersion?.ToNormalizedString();
+
+            yield return packageAggregateViewModel;
         }
     }
 }

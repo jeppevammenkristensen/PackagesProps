@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileBasedApp.Toolkit.CSharp;
@@ -16,7 +16,62 @@ using TruePath;
 
 namespace PackagesProps.ViewModels;
 
-public partial class PackageAggregateViewModel : ViewModelBase
+public class PackageResult
+{
+    public PackageResult(string repoName, string packageName, ImmutableArray<PackageVersion> versions)
+    {
+        RepoName = repoName;
+        PackageName = packageName;
+        Versions = versions;
+    }
+
+    public string RepoName { get; private set; }
+    public string PackageName { get; private set; }
+    
+    public ImmutableArray<PackageVersion> Versions { get; private set; }
+}
+
+public class NugetRepository : INugetRepository
+{
+    public async Task<ImmutableArray<PackageResult>> FindPackages(string packageName, bool includePrerelease,AbsolutePath rootFolder, CancellationToken token = default
+    )
+    {
+        ImmutableArray<PackageResult> result = [];
+        var settings = Settings.LoadDefaultSettings(root: rootFolder.Value);
+        var sourceProvider = new PackageSourceProvider(settings);
+        var repos = sourceProvider.LoadPackageSources()
+            .Where(s => s.IsEnabled)
+            .Select(s => Repository.Factory.GetCoreV3(s));
+        
+        foreach (var repo in repos)
+        {
+            var search = await repo.GetResourceAsync<PackageSearchResource>(token);
+            var hits = (await search.SearchAsync(
+                packageName,
+                new SearchFilter(includePrerelease: includePrerelease),
+                skip: 0, take: 1,
+                NullLogger.Instance, token)).ToList();
+
+            if (hits.SingleOrDefault() is { } hit)
+            {
+                ImmutableArray<PackageVersion> versions =
+                    [..(await hit.GetVersionsAsync()).Select(x => new PackageVersion(x.Version.ToNormalizedString()))];
+                result = result.Add(new PackageResult(repo.PackageSource.Name, packageName, versions));
+            }
+        }
+
+        return result;
+
+    }
+}
+
+public interface INugetRepository
+{
+    Task<ImmutableArray<PackageResult>> FindPackages(string packageName, bool includePrerelease,AbsolutePath rootFolder, CancellationToken token = default
+    );
+}
+
+public partial class PackageAggregateViewModel(INugetRepository nugetRepository, IUiDispatcher uiDispatcher) : ViewModelBase
 {
     [ObservableProperty] public partial string Package { get; set; }
     
@@ -28,12 +83,9 @@ public partial class PackageAggregateViewModel : ViewModelBase
 
     [ObservableProperty] public partial ObservableCollection<string> LatestVersions { get; set; } = [];
     
-    public AbsolutePath? Root { get; set; }
-    
     [NotifyCanExecuteChangedFor(nameof(UseSelectedCommand))] [NotifyCanExecuteChangedFor(nameof(UseHighestCommand))] [ObservableProperty] public partial string? UsedVersion { get; set; }
     
     [ObservableProperty] public partial bool IgnoreUpdate { get; set; }
-
     
 
     /// <summary>
@@ -56,35 +108,16 @@ public partial class PackageAggregateViewModel : ViewModelBase
 
     public async Task Refresh(bool includePrerelease, AbsolutePath root)
     {
-        var settings = Settings.LoadDefaultSettings(root: root.Value);
-        var sourceProvider = new PackageSourceProvider(settings);
-        var repos = sourceProvider.LoadPackageSources()
-            .Where(s => s.IsEnabled)
-            .Select(s => Repository.Factory.GetCoreV3(s));
-
-        using var cache = new SourceCacheContext();
-        List<PackageVersion> versions = new ();
-        
-        foreach (var repo in repos)
-        {
-            var search = await repo.GetResourceAsync<PackageSearchResource>();
-            var hits = (await search.SearchAsync(
-                Package,
-                new SearchFilter(includePrerelease: includePrerelease),
-                skip: 0, take: 1,
-                NullLogger.Instance, CancellationToken.None)).ToList();
-
-            if (hits?.SingleOrDefault() is { } hit)
-            {
-                versions.AddRange((await hit.GetVersionsAsync()).Select(x => new PackageVersion(x.Version.ToNormalizedString())));
-            }
-        }
+        var packageResults = await nugetRepository.FindPackages(Package, includePrerelease, root);
         
         // The NuGet query above runs on a Parallel.ForEachAsync worker thread; the property
         // setters below fire CanExecuteChanged on bound Buttons (StyledProperty.VerifyAccess),
         // so they must run on the UI thread.
-        var sortedVersions = versions.OrderByDescending(x => x.NugetVersion).ToList();
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        var sortedVersions = packageResults.SelectMany(x => x.Versions)
+            .DistinctBy(x => x.NugetVersion)
+            .OrderByDescending(x => x.NugetVersion).ToList();
+        
+        await uiDispatcher.InvokeAsync(() =>
         {
             LatestVersions = [..sortedVersions];
             HighestAvailableVersion = LatestVersions.FirstOrDefault();
