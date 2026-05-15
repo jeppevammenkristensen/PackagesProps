@@ -79,7 +79,18 @@
 
         <!-- Status bar: bound to MainWindowViewModel.Status; styling switches on StatusType -->
         <Border Grid.Row="2" Classes.StatusBar="{Binding DisplayInfo}" Classes.StatusBarRed="{Binding DisplayInfoError}">
-            <TextBlock Text="{Binding Status}" />
+            <Grid>
+                <TextBlock Text="{Binding Status}" VerticalAlignment="Center" />
+                <Button Content="×"
+                        Padding="2,0"
+                        Background="Transparent"
+                        Command="{Binding ResetErrorCommand}"
+                        IsVisible="{Binding DisplayInfoError}"
+                        BorderThickness="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        ToolTip.Tip="Dismiss" />
+            </Grid>
         </Border>
 
         <!-- Startup progress: visible only while StartupCommand is running -->

@@ -39,7 +39,7 @@ public partial class MainWindowViewModel : ViewModelBase, IRecipient<ProgressDat
 
     [ObservableProperty] public partial bool Loaded { get; set; }
     [ObservableProperty] public partial string Title { get; set; }
-    [NotifyPropertyChangedFor(nameof(DisplayInfo))] [NotifyPropertyChangedFor(nameof(DisplayInfoError))] [ObservableProperty] public partial StatusType StatusType { get; set; }
+    [NotifyPropertyChangedFor(nameof(DisplayInfo))] [NotifyPropertyChangedFor(nameof(DisplayInfoError))] [NotifyCanExecuteChangedFor(nameof(ResetErrorCommand))] [ObservableProperty] public partial StatusType StatusType { get; set; }
 
     public bool DisplayInfo => StatusType == StatusType.Info;
     public bool DisplayInfoError => StatusType == StatusType.Error;
@@ -53,7 +53,6 @@ public partial class MainWindowViewModel : ViewModelBase, IRecipient<ProgressDat
     {
         Status = message.Value.Value;
         StatusType = message.Value.StatusType;
-        
     }
 
     [RelayCommand]
@@ -114,8 +113,21 @@ public partial class MainWindowViewModel : ViewModelBase, IRecipient<ProgressDat
             Screen = screenPage;
         }
     }
-    
 
+
+    private bool CanExecuteResetError()
+    {
+        return StatusType == StatusType.Error;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteResetError))]
+    private void ResetError()
+    {
+        StatusType = StatusType.Info;
+        Status = string.Empty;
+    }
+    
+    
     private bool CanExecuteClose(ScreenPage? screen)
     {
         if (screen is null) return false;
