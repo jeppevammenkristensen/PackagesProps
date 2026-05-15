@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <!--
+    Central package declarations. The fixture intentionally lists Newtonsoft.Json twice:
+    once via <PackageVersion Include="..." /> and once via <PackageVersion Update="..." />
+    with a different version. This is a valid MSBuild pattern - the Update line overrides
+    the version for the previously included item rather than introducing a duplicate.
+  -->
+  <ItemGroup>
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageVersion Include="Serilog" Version="3.1.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Update="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

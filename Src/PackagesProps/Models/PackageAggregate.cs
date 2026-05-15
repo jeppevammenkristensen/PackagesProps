@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace PackagesProps.Models;
 
 /// <summary>
@@ -18,7 +20,8 @@ namespace PackagesProps.Models;
 public record PackageAggregate(
     string Package,
     string? PackagePropsVersion,
-    string? HighestProjectsVersion)
+    string? HighestProjectsVersion,
+    ImmutableArray<string?> PackagePropsVersions)
 {
     public string? UsedVersion => PackagePropsVersion ?? HighestProjectsVersion;
 }

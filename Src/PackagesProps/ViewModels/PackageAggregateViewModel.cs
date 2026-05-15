@@ -87,6 +87,12 @@ public partial class PackageAggregateViewModel(INugetRepository nugetRepository,
     
     [ObservableProperty] public partial bool IgnoreUpdate { get; set; }
     
+    [NotifyPropertyChangedFor(nameof(HasMultiplePackagePropVersions))]
+    [ObservableProperty]
+    public partial ImmutableArray<string?> PackagePropsVersions { get; set; }
+    
+    public bool HasMultiplePackagePropVersions => PackagePropsVersions.Length > 1;
+
 
     /// <summary>
     /// Queries every enabled NuGet source configured for <paramref name="root"/> for available versions

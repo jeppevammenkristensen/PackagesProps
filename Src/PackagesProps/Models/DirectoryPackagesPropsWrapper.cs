@@ -15,7 +15,9 @@ namespace PackagesProps.Models;
 public class DirectoryPackagesPropsWrapper
 {
     private readonly AbsolutePath _path;
-    private XElement _xml;
+    private XElement? _xml;
+    
+    public XElement Xml => _xml ?? throw new InvalidOperationException("Directory.Packages.props has not been loaded");
 
     public DirectoryPackagesPropsWrapper(AbsolutePath path)
     {
@@ -39,7 +41,7 @@ public class DirectoryPackagesPropsWrapper
 
     public IEnumerable<PackageVersionItem> GetPackageVersions()
     {
-        foreach (var packageVersion in _xml.Descendants("PackageVersion"))
+        foreach (var packageVersion in Xml.Descendants("PackageVersion"))
         {
             yield return new PackageVersionItem(packageVersion);
         }

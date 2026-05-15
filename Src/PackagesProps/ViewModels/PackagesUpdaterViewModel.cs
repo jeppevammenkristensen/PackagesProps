@@ -77,7 +77,7 @@ public partial class PackagesUpdaterViewModel(
         }
 
         SetStatusMessage($"Starting update of {directoryPropsPath}...");
-        var updateOperations = new UpdateOperations();
+        var updateOperations = new UpdateOperations(fileSystem);
 
         var packagesToUpdate = PackageAggregateViewModels.Where(x => !x.IgnoreUpdate).ToList();
 
@@ -148,6 +148,7 @@ public partial class PackagesUpdaterViewModel(
                 viewModel.PackagePropsVersion = x.PackagePropsVersion;
                 viewModel.HighestProjectsVersion = x.HighestProjectsVersion;
                 viewModel.UsedVersion = x.UsedVersion;
+                viewModel.PackagePropsVersions = x.PackagePropsVersions;
                 return viewModel;
             })
             .ToListAsync(token)];

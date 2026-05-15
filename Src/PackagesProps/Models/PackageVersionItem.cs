@@ -18,12 +18,21 @@ public class PackageVersionItem
     }
 
     public bool HasInclude => Include != null;
+    public bool HasUpdate => Update != null;
+    
     public bool HasVersion => Version != null;
 
-    public string Name => Include ?? "[UNKNOWN]";
-
     public string? Include => _packageVersion.Attribute("Include")?.Value;
+    
+    public string? Update => _packageVersion.Attribute("Update")?.Value;
 
+    public string PackageName => this switch
+    {
+        {HasInclude: true} => Include!,
+        {HasUpdate: true} => Update!,
+        _ => "[UNKNOWN]"
+    };
+    
     public string? Version => _packageVersion.Attribute("Version")?.Value
                               ?? _packageVersion.Elements().FirstOrDefault(e => e.Name.LocalName == "Version")?.Value;
 

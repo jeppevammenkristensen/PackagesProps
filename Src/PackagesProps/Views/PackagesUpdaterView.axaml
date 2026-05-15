@@ -72,7 +72,20 @@
                     <DataTemplate DataType="viewModel:PackageAggregateViewModel">
                         <Grid ColumnDefinitions="2*,*,*,*,*,*">
                             <TextBlock Grid.Column="0" Margin="8,4" Text="{Binding Package}" />
-                            <TextBlock Grid.Column="1" Margin="8,4" Text="{Binding PackagePropsVersion}"></TextBlock>
+                            <Grid Grid.Column="1" Margin="8.4" Grid.ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding PackagePropsVersion}"></TextBlock>
+                                <Border Grid.Column="1"
+                                        IsVisible="{Binding HasMultiplePackagePropVersions}"
+                                        Background="#FFF4CE"
+                                        BorderBrush="#E0A800" BorderThickness="1"
+                                        CornerRadius="3" Padding="5,1" Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        ToolTip.Tip="This package is declared with multiple versions in Directory.Packages.props.">
+                                    <TextBlock Text="&#x26A0;" Foreground="#7A5C00" FontSize="11" />
+                                </Border>
+                            </Grid>
+                                
+                                
                             <TextBlock Grid.Column="2" Margin="8,4" Text="{Binding HighestProjectsVersion}" />
                             <ComboBox Grid.Column="3" Margin="8,4" SelectedItem="{Binding HighestAvailableVersion}" ItemsSource="{Binding LatestVersions}" />
                             <TextBlock Grid.Column="4" Margin="8,4" Text="{Binding UsedVersion}" ></TextBlock>

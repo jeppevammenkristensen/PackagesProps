@@ -7,6 +7,7 @@ using JetBrains.Annotations;
 using Lombok.NET;
 using NSubstitute;
 using PackagesProps.Infrastructure;
+using PackagesProps.Models;
 using TruePath;
 using Xunit;
 
@@ -24,7 +25,7 @@ public class ProjectAnalyserTest
     {
         var testHarness = new TestHarness();
         var subject = testHarness.InitSubject();
-        var analyzePathForProjectWrappers = await subject.AnalyzePathForProjectWrappers(TestConstants.RootTestsPath / "IncorrectVersions").ToListAsync();
+        var analyzePathForProjectWrappers = await subject.AnalyzePathForProjectWrappers(TestConstants.RootTestsPath / "IncorrectVersions").ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
         analyzePathForProjectWrappers.Should().HaveCount(2);
     }
     
@@ -33,9 +34,30 @@ public class ProjectAnalyserTest
     {
         var testHarness = new TestHarness();
         var subject = testHarness.InitSubject();
-        var projectWrappers = await subject.AnalyzePathForProjectWrappers(TestConstants.RootTestsPath / "IncorrectVersions").ToListAsync();
-        _ = await subject.GetPackageReferences(projectWrappers, null).ToListAsync();
+        var projectWrappers = await subject.AnalyzePathForProjectWrappers(TestConstants.RootTestsPath / "IncorrectVersions").ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
+        _ = await subject.GetPackageReferences(projectWrappers, null).ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
+    }
+    
+    [Fact]
+    public async Task GetPackageReferences_WithDuplicate_Does_Not_Throw()
+    {
+        var testHarness = new TestHarness();
+        var subject = testHarness.InitSubject();
+        var rootTestsPath = TestConstants.RootTestsPath / "DiffVersionsInPackagesProps";
+        var propsPath = rootTestsPath / "Directory.Packages.props";
         
+        var directoryWrapper = new DirectoryPackagesPropsWrapper(propsPath);
+        await directoryWrapper.Load();
+        
+        var projectWrappers = await subject.AnalyzePathForProjectWrappers(rootTestsPath).ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
+        
+        var result = await subject.GetPackageReferences(projectWrappers, directoryWrapper).ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var newtonsoftJson = result.FirstOrDefault(x => x.Package == "Newtonsoft.Json");
+        newtonsoftJson.Should().NotBeNull();
+        newtonsoftJson.PackagePropsVersion.Should().Be("13.0.3");
+        newtonsoftJson.HighestProjectsVersion.Should().Be("13.0.1");
+        newtonsoftJson.UsedVersion.Should().Be("13.0.3");
+
     }
 }
 
