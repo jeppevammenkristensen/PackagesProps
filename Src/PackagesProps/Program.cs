@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Avalonia;
+using Velopack;
 
 namespace PackagesProps;
 
@@ -18,6 +19,8 @@ internal sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        VelopackApp.Build().Run();
+        
         // Register global exception handlers as early as possible
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
         TaskScheduler.UnobservedTaskException += TaskSchedulerOnUnobservedTaskException;

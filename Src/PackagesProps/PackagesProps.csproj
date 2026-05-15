@@ -5,8 +5,11 @@
         <Nullable>enable</Nullable>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
-        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>        
-        <LangVersion>preview</LangVersion>        
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>       
+        <Authors>Jeppe Roi Kristensen</Authors>
+        <Description>This is a application to help with transforming a solution to centralized package management. Having logic for getting the package versions into the Directory.Packages.Props</Description>
+        <VersionPrefix>0.0.1</VersionPrefix>
+        <VersionSuffix>preview-01</VersionSuffix>        
     </PropertyGroup>
 
     <ItemGroup>
@@ -31,6 +34,7 @@
         <PackageReference Include="NuGet.Common" />
         <PackageReference Include="NuGet.Configuration" />
         <PackageReference Include="NuGet.Protocol" />
+        <PackageReference Include="Velopack" />
         <PackageReference Include="Xaml.Behaviors.Avalonia" />
         <!-- Pin transitive dependency to fix GHSA-xrw6-gwf8-vvr9 (via Avalonia.FreeDesktop) -->
         <PackageReference Include="Tmds.DBus.Protocol" />
