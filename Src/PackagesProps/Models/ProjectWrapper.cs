@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Text;
@@ -20,6 +21,9 @@ namespace PackagesProps.Models;
 public class ProjectWrapper(AbsolutePath path, IFileSystem fileSystem)
 {
     private XElement? _xml;
+
+    /// <summary>Encoding detected when the file was loaded; reused on <see cref="Save"/>.</summary>
+    private Encoding _encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
 
     public ProjectWrapper(AbsolutePath path) : this(path, new FileSystem())
@@ -52,7 +56,14 @@ public class ProjectWrapper(AbsolutePath path, IFileSystem fileSystem)
         try
         {
             await using var fileSystemStream = path.OpenRead(fileSystem);
-            _xml= await XElement.LoadAsync(fileSystemStream, LoadOptions.PreserveWhitespace, CancellationToken.None);
+            // Fall back to UTF-8 without BOM when the file has no byte-order mark,
+            // otherwise CurrentEncoding reflects the BOM-detected encoding.
+            using var streamReader = new StreamReader(
+                fileSystemStream,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                detectEncodingFromByteOrderMarks: true);
+            _xml = await XElement.LoadAsync(streamReader, LoadOptions.PreserveWhitespace, CancellationToken.None);
+            _encoding = streamReader.CurrentEncoding;
         }
         catch (Exception e)
         {
@@ -91,8 +102,8 @@ public class ProjectWrapper(AbsolutePath path, IFileSystem fileSystem)
             OmitXmlDeclaration = true,
             Indent = true,
             Async = true,
-            // csproj files use UTF-8 with no BOM
-            Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            // Preserve the encoding detected when the file was loaded
+            Encoding = _encoding,
             NewLineHandling = NewLineHandling.None,
             NewLineChars = "\n",       // optional, match the dotnet SDK style
         };
