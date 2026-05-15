@@ -1,0 +1,154 @@
+using System;
+using System.Diagnostics;
+using System.IO.Abstractions;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
+using Avalonia.Markup.Xaml;
+using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.Build.Evaluation;
+using PackagesProps.Infrastructure;
+using PackagesProps.Infrastructure.LongRunning;
+using PackagesProps.ViewModels;
+using PackagesProps.Views;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using PackagesProps.Models.Messages;
+
+namespace PackagesProps;
+
+public class App : Application
+{
+    private IHost? _host;
+
+    internal IHost GlobalHost => _host ?? throw new InvalidOperationException("Host has not been initialized");
+
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
+
+    public override async void OnFrameworkInitializationCompleted()
+    {
+        try
+        {
+            _host = CreateHostBuilder().Build();
+
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.MainWindow = new MainWindow
+                {
+                    DataContext = GlobalHost.Services.GetRequiredService<MainWindowViewModel>()
+                };
+                
+                SetupErrorHandling();
+
+                desktop.Exit += async (_, _) =>
+                {
+                    await GlobalHost.StopAsync();
+                    GlobalHost.Dispose();
+                    _host = null;
+                };
+            }
+
+            // This is where DataTemplates will be created based on the
+            // views and view models registered in RegisterViews
+            DataTemplates.Add(GlobalHost.Services.GetRequiredService<ViewLocator>());
+
+            base.OnFrameworkInitializationCompleted();
+            await GlobalHost.StartAsync();
+        }
+        catch (Exception e)
+        {
+            if (_host is not null)
+                GlobalHost.Services.GetRequiredService<ILogger<App>>()
+                    .LogCritical(e, "Failed to start the application");
+        }
+    }
+
+    private void SetupErrorHandling()
+    {
+        // Hook UI thread unhandled exceptions to log via Microsoft.Extensions.Logging
+        Dispatcher.UIThread.UnhandledException +=  (_, e) =>
+        {
+            try
+            {
+                GlobalHost.Services.GetRequiredService<ILogger<App>>()
+                    .LogCritical(e.Exception, "Unhandled exception on Avalonia UI thread");
+            }
+            catch (Exception ex)
+            {
+                // swallow any logging failures to avoid recursive crashes
+                Debug.WriteLine("Error occurred when trying to log unhandled exception");
+                Debug.WriteLine($"Original exception: {e}");
+                Debug.WriteLine($"Exception when trying to log error: {ex}");
+            }
+
+            // This is a simplistic way to handle errors and should be refined
+                    
+            var mainWindowViewModel = GlobalHost.Services.GetRequiredService<MainWindowViewModel>();
+            mainWindowViewModel.Status = $"An error occurred  {e.Exception.Message}";
+            mainWindowViewModel.StatusType = StatusType.Error;
+            e.Handled = true;
+
+            // Decide whether to keep the app alive on UI exceptions; here we don't handle them
+            // so the default crash behavior is preserved. Set to true if you prefer to continue.
+        };
+    }
+
+    private IHostBuilder CreateHostBuilder()
+    {
+        return Host.CreateDefaultBuilder(Environment.GetCommandLineArgs())
+            .ConfigureServices((ctx, services) =>
+            {
+                // Example of using the context
+                // ctx.Configuration["SomeValue"];
+                
+                services
+                    .AddTransient<IServiceLocator, ServiceCollectionServiceLocator>()
+                    .AddTransient<ViewLocator>();
+
+                // Registers the view models and their corresponding views
+                // Here the ViewModels are registred and then coupled with their 
+                // corresponding views so that they can be used in the application
+                RegisterViews(services);
+                RegisterOtherDependencies(services);
+            });
+    }
+
+    private void RegisterOtherDependencies(IServiceCollection services)
+    {
+        // Register other dependencies here. TimeProvider added as an example
+        services.AddSingleton<TimeProvider>(_ => TimeProvider.System);
+        services.AddTransient<IFileSystem>(_ => new FileSystem());
+        services.AddTransient<IMessenger>(_ => WeakReferenceMessenger.Default);
+        services.AddTransient<PackagePropsService>();
+        services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<INugetRepository, NugetRepository>();
+        services.AddSingleton<IProjectAnalyser, ProjectAnalyser>();
+        services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
+    }
+
+    /// <summary>
+    ///     This will register the viewModels and also there corresponding relationship with their view
+    /// </summary>
+    /// <param name="collection"></param>
+    private void RegisterViews(IServiceCollection collection)
+    {
+        // Since we hook up the MainWindow and use IOC to retrieve the MainWindowViewModel
+        // it would technically be enough to only register the MainWindowViewModel with
+        // collection.AddSingleton<MainWindowViewModel>() but for good measure it's registered here 
+        // also
+        
+        collection
+            .AddViewModelAndRegisterView<MainWindowViewModel, MainWindow>(ViewModelScope.Singleton)
+            .AddViewModelAndRegisterView<PackagesUpdaterViewModel, PackagesUpdaterView>(ViewModelScope.Transient)
+            .AddViewModelAndRegisterView<EnsurePackagePropsViewModel, EnsurePackagePropsView>(ViewModelScope.Transient)
+            .AddViewModelAndRegisterView<DirectoryPackagesPropsViewerViewModel, DirectoryPackagesPropsViewerView>(ViewModelScope.Transient);
+
+        collection.AddSingleton<IPageHost>(ctx => ctx.GetRequiredService<MainWindowViewModel>());
+        collection.AddTransient<PackageAggregateViewModel>();
+    }
+
+}

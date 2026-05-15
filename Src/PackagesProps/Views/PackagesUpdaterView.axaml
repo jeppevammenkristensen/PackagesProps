@@ -1,0 +1,130 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModel="clr-namespace:PackagesProps.ViewModels"
+             xmlns:models="clr-namespace:PackagesProps.Models"
+             x:DataType="viewModel:PackagesUpdaterViewModel"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="PackagesProps.Views.PackagesUpdaterView">
+    <DockPanel LastChildFill="True">
+        <!-- Header & toolbar -->
+        <StackPanel DockPanel.Dock="Top" Spacing="14" Margin="0,0,0,14">
+           
+            <TextBlock Classes="Subtitle" Text="Pick a folder to begin." />
+
+            <!-- Toolbar -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Name="PickFolderButton" Content="Pick folder..." Click="PickFolderButton_OnClick" />
+                <TextBlock VerticalAlignment="Center" Text="{Binding SelectedFolder}" />
+                <Button Content="Refresh" Command="{Binding ExecuteRefreshCommand}" />
+                <CheckBox IsChecked="{Binding Preview}" Content="Include preview"></CheckBox>
+                <Button Content="Apply changes" Command="{Binding ApplyCommand}" ToolTip.Tip="Apply the changes to a directory.packages.props file in the given folder. If one does not exist it will be created (if a prompt is confirmed)" />
+                
+                <CheckBox IsChecked="{Binding HasDirectoryPackagesProps}" IsEnabled="False" Content="Has directory props"></CheckBox>
+                <Button IsVisible="{Binding TraverseUpVisible}" Command="{Binding TraverseUpCommand}"  ToolTip.Tip="Traverses up from the given location to find a folder containing directory.packages.props and if that is not found an solution file" Content="Traverse Up"></Button>
+                
+                <ProgressBar Width="100" Height="40" IsIndeterminate="False"
+                             VerticalAlignment="Center"
+                             Minimum="0" Maximum="{Binding RefreshTotal}" Value="{Binding RefreshProgress}"
+                             ShowProgressText="True" 
+                             ProgressTextFormat="{}{0:0}/{3:0}"
+                             IsVisible="{Binding LoadingNugetPackages}" >
+                    <ProgressBar.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Value" Duration="0:0:0.25" Easing="CubicEaseOut" />
+                        </Transitions>
+                    </ProgressBar.Transitions>
+                </ProgressBar>
+                <ProgressBar Width="80" IsIndeterminate="True"
+                             VerticalAlignment="Center"
+                             ShowProgressText="False"
+                             IsVisible="{Binding ApplyCommand.IsRunning}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Packages -->
+        <Grid RowDefinitions="2*,Auto,*" IsEnabled="{Binding !ExecuteRefreshCommand.IsRunning}">
+            <!-- Package list -->
+            <DataGrid Name="PackagesList"
+                      Grid.Row="0"
+                      SelectionMode="Extended"
+                      IsReadOnly="True"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="True"
+                      ItemsSource="{Binding PackageAggregateViewModels}">
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Use installed (available from projects)"
+                                  Command="{Binding UseHighestForSelectedCommand}"
+                                  CommandParameter="{Binding #PackagesList.SelectedItems}" />
+                        <MenuItem Header="Use selected"
+                                  Command="{Binding UseSelectedForSelectedCommand}"
+                                  CommandParameter="{Binding #PackagesList.SelectedItems}" />
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Package" Width="2*" Binding="{Binding Package}" />
+                    <DataGridTemplateColumn Header="Package Props Version" Width="*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="viewModel:PackageAggregateViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,4" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding PackagePropsVersion}" VerticalAlignment="Center" />
+                                    <Border IsVisible="{Binding HasMultiplePackagePropVersions}"
+                                            Background="#FFF4CE"
+                                            BorderBrush="#E0A800" BorderThickness="1"
+                                            CornerRadius="3" Padding="5,1"
+                                            VerticalAlignment="Center"
+                                            ToolTip.Tip="This package is declared with multiple versions in Directory.Packages.props. Only the last one will be changed">
+                                        <TextBlock Text="&#x26A0;" Foreground="#7A5C00" FontSize="11" />
+                                    </Border>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Highest Version from projects" Width="*" Binding="{Binding HighestProjectsVersion}" />
+                    <DataGridTemplateColumn Header="Available" Width="*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="viewModel:PackageAggregateViewModel">
+                                <ComboBox Margin="8,4" HorizontalAlignment="Stretch"
+                                          SelectedItem="{Binding HighestAvailableVersion}"
+                                          ItemsSource="{Binding LatestVersions}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Used" Width="*" Binding="{Binding UsedVersion}" />
+                    <DataGridTemplateColumn Header="" Width="Auto">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="viewModel:PackageAggregateViewModel">
+                                <StackPanel Margin="8,4" Orientation="Horizontal">
+                                    <Button Content="Use installed" Command="{Binding UseHighestCommand}" />
+                                    <Button Content="Use selected" Command="{Binding UseSelectedCommand}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Projects header -->
+            <TextBlock Grid.Row="1"
+                       FontWeight="Bold" Text="Projects" Margin="8,12,8,4" />
+
+            <!-- Project tree -->
+            <TreeView Grid.Row="2"
+                      ItemsSource="{Binding Projects}">
+                <TreeView.DataTemplates>
+                    <TreeDataTemplate DataType="models:ProjectWrapper" ItemsSource="{Binding PackageReferences}">
+                        <TextBlock Text="{Binding Path.FileName}" FontWeight="SemiBold" />
+                    </TreeDataTemplate>
+                    <DataTemplate DataType="models:PackageReference">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding Name}" />
+                            <TextBlock Text="{Binding Version}" Opacity="0.7" />
+                        </StackPanel>
+                    </DataTemplate>
+                </TreeView.DataTemplates>
+            </TreeView>
+        </Grid>
+    </DockPanel>
+</UserControl>

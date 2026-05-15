@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="PackagesProps.Tests/PackagesProps.Tests.csproj" />
+  <Project Path="PackagesProps/PackagesProps.csproj" />
+</Solution>
